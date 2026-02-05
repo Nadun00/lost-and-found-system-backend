@@ -135,6 +135,39 @@ app.get("/lost-items", (req, res) => {
   });
 });
 
+// GET /lost-items/user/:id
+// This endpoint returns all lost items for a specific user (student)
+app.get("/lost-items/user/:id", (req, res) => {
+  const userId = req.params.id; // route param from URL
+
+  const sql = `
+    SELECT 
+      id,
+      user_id,
+      item_type,
+      lost_location,
+      lost_time_from,
+      lost_time_to,
+      color,
+      brand_model,
+      public_description,
+      status,
+      created_at
+    FROM lost_items
+    WHERE user_id = ?
+    ORDER BY created_at DESC
+  `;
+
+  db.query(sql, [userId], (err, results) => {
+    if (err) {
+      console.error(" Error fetching user lost items:", err);
+      return res.status(500).json({ message: "Database error" });
+    }
+
+    res.json(results);
+  });
+});
+
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
 });
