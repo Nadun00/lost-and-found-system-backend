@@ -168,6 +168,73 @@ app.get("/lost-items/user/:id", (req, res) => {
   });
 });
 
+// POST /found-items
+// Admin logs a found item
+app.post("/found-items", (req, res) => {
+  console.log("🔥 POST /found-items called");
+  console.log("📦 req.body =", req.body);
+
+  const {
+    admin_id,
+    item_type,
+    found_location,
+    found_time,
+    color,
+    brand_model,
+    public_description,
+    photo_url,
+    storage_location,
+  } = req.body;
+
+  // Basic validation: required fields
+  if (!admin_id || !item_type || !found_location || !found_time) {
+    return res.status(400).json({
+      message: "Missing required fields",
+    });
+  }
+
+  const sql = `
+    INSERT INTO found_items (
+      admin_id,
+      item_type,
+      found_location,
+      found_time,
+      color,
+      brand_model,
+      public_description,
+      photo_url,
+      storage_location
+    )
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `;
+
+  const values = [
+    admin_id,
+    item_type,
+    found_location,
+    found_time,
+    color || null,
+    brand_model || null,
+    public_description || null,
+    photo_url || null,
+    storage_location || null,
+  ];
+
+  db.query(sql, values, (err, result) => {
+    if (err) {
+      console.error("❌ Error inserting found item:", err);
+      return res.status(500).json({ message: "Database error", error: err });
+    }
+
+    console.log("✅ Found item logged, ID:", result.insertId);
+
+    res.status(201).json({
+      message: "Found item logged successfully",
+      found_item_id: result.insertId,
+    });
+  });
+});
+
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
 });
