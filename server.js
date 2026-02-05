@@ -267,6 +267,99 @@ app.get("/found-items", (req, res) => {
   });
 });
 
+// POST /claims
+// Student claims a found item and provides secret verification info
+app.post("/claims", (req, res) => {
+  console.log("🔥 POST /claims called");
+  console.log("📦 req.body =", req.body);
+
+  const {
+    lost_item_id,
+    found_item_id,
+    claimer_id,
+    verification_input_1,
+    verification_input_2,
+  } = req.body;
+
+  // Basic validation
+  if (!lost_item_id || !found_item_id || !claimer_id) {
+    return res.status(400).json({
+      message: "lost_item_id, found_item_id, and claimer_id are required",
+    });
+  }
+
+  //  Fetch the lost item to get its secret info
+  const lostSql = `
+    SELECT secret_info_1, secret_info_2
+    FROM lost_items
+    WHERE id = ?
+  `;
+
+  db.query(lostSql, [lost_item_id], (err, lostResults) => {
+    if (err) {
+      console.error("Error fetching lost item for claim:", err);
+      return res.status(500).json({ message: "Database error" });
+    }
+
+    if (lostResults.length === 0) {
+      // No lost item with that ID
+      return res.status(404).json({ message: "Lost item not found" });
+    }
+
+    const lostItem = lostResults[0];
+
+    //  Compare secrets to decide initial status
+    let status = "pending"; // default
+
+    if (
+      lostItem.secret_info_1 &&
+      lostItem.secret_info_2 &&
+      verification_input_1 === lostItem.secret_info_1 &&
+      verification_input_2 === lostItem.secret_info_2
+    ) {
+      status = "verified";
+    }
+
+    //  Insert claim into claims table
+    const insertSql = `
+      INSERT INTO claims (
+        lost_item_id,
+        found_item_id,
+        claimer_id,
+        verification_input_1,
+        verification_input_2,
+        status
+      )
+      VALUES (?, ?, ?, ?, ?, ?)
+    `;
+
+    const values = [
+      lost_item_id,
+      found_item_id,
+      claimer_id,
+      verification_input_1 || null,
+      verification_input_2 || null,
+      status,
+    ];
+
+    db.query(insertSql, values, (err, result) => {
+      if (err) {
+        console.error(" Error inserting claim:", err);
+        return res.status(500).json({ message: "Database error" });
+      }
+
+      console.log(" Claim created, ID:", result.insertId, "Status:", status);
+
+      res.status(201).json({
+        message: "Claim created successfully",
+        claim_id: result.insertId,
+        status,
+      });
+    });
+  });
+});
+
+
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
 });
