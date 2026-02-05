@@ -1,6 +1,6 @@
 const express = require("express");
 const cors = require("cors");
-const db = require("./db"); // import our database connection
+const db = require("./db"); 
 
 const app = express();
 
@@ -32,6 +32,70 @@ app.get("/test-db", (req, res) => {
 });
 
 const PORT = 5000;
+
+// POST /lost-items
+// This endpoint creates a new lost item
+app.post("/lost-items", (req, res) => {
+  // Extract data from request body
+  const {
+    user_id,
+    item_type,
+    lost_location,
+    lost_time_from,
+    lost_time_to,
+    color,
+    brand_model,
+    public_description,
+    secret_info_1,
+    secret_info_2,
+  } = req.body;
+
+  // SQL query with placeholders
+  const sql = `
+    INSERT INTO lost_items (
+      user_id,
+      item_type,
+      lost_location,
+      lost_time_from,
+      lost_time_to,
+      color,
+      brand_model,
+      public_description,
+      secret_info_1,
+      secret_info_2
+    )
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `;
+
+  // Values array
+  const values = [
+    user_id,
+    item_type,
+    lost_location,
+    lost_time_from,
+    lost_time_to,
+    color,
+    brand_model,
+    public_description,
+    secret_info_1,
+    secret_info_2,
+  ];
+
+  // Execute query
+  db.query(sql, values, (err, result) => {
+    if (err) {
+      console.error("Error inserting lost item:", err);
+      return res.status(500).json({ message: "Database error" });
+    }
+
+    // Success response
+    res.status(201).json({
+      message: "Lost item reported successfully",
+      lost_item_id: result.insertId,
+    });
+  });
+});
+
 
 app.listen(PORT, () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`);
