@@ -171,8 +171,8 @@ app.get("/lost-items/user/:id", (req, res) => {
 // POST /found-items
 // Admin logs a found item
 app.post("/found-items", (req, res) => {
-  console.log("🔥 POST /found-items called");
-  console.log("📦 req.body =", req.body);
+  console.log(" POST /found-items called");
+  console.log(" req.body =", req.body);
 
   const {
     admin_id,
@@ -222,16 +222,48 @@ app.post("/found-items", (req, res) => {
 
   db.query(sql, values, (err, result) => {
     if (err) {
-      console.error("❌ Error inserting found item:", err);
+      console.error(" Error inserting found item:", err);
       return res.status(500).json({ message: "Database error", error: err });
     }
 
-    console.log("✅ Found item logged, ID:", result.insertId);
+    console.log(" Found item logged, ID:", result.insertId);
 
     res.status(201).json({
       message: "Found item logged successfully",
       found_item_id: result.insertId,
     });
+  });
+});
+
+// GET /found-items
+// Returns all currently available found items
+app.get("/found-items", (req, res) => {
+  const sql = `
+    SELECT
+      id,
+      admin_id,
+      item_type,
+      found_location,
+      found_time,
+      color,
+      brand_model,
+      public_description,
+      photo_url,
+      storage_location,
+      status,
+      created_at
+    FROM found_items
+    WHERE status = 'available'
+    ORDER BY found_time DESC
+  `;
+
+  db.query(sql, (err, results) => {
+    if (err) {
+      console.error(" Error fetching found items:", err);
+      return res.status(500).json({ message: "Database error" });
+    }
+
+    res.json(results);
   });
 });
 
