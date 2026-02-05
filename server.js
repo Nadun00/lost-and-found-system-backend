@@ -51,7 +51,7 @@ app.post("/lost-items", (req, res) => {
   } = req.body;
 
   if (!user_id || !item_type || !lost_location) {
-    console.warn("⚠️ Missing required fields");
+    console.warn(" Missing required fields");
     return res.status(400).json({ message: "Missing required fields" });
   }
 
@@ -104,7 +104,37 @@ console.log("Running SQL with values:", values);
   });
 });
 
+// GET /lost-items
+// This endpoint returns all lost items
+app.get("/lost-items", (req, res) => {
+  const sql = `
+    SELECT 
+      id,
+      user_id,
+      item_type,
+      lost_location,
+      lost_time_from,
+      lost_time_to,
+      color,
+      brand_model,
+      public_description,
+      status,
+      created_at
+    FROM lost_items
+    ORDER BY created_at DESC
+  `;
+
+  db.query(sql, (err, results) => {
+    if (err) {
+      console.error("❌ Error fetching lost items:", err);
+      return res.status(500).json({ message: "Database error" });
+    }
+
+    // results is an array of rows
+    res.json(results);
+  });
+});
 
 app.listen(PORT, () => {
-  console.log(`🚀 Server running on http://localhost:${PORT}`);
+  console.log(`Server running on http://localhost:${PORT}`);
 });
