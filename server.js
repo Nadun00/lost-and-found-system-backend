@@ -50,6 +50,11 @@ app.post("/lost-items", (req, res) => {
     secret_info_2,
   } = req.body;
 
+  if (!user_id || !item_type || !lost_location) {
+    console.warn("⚠️ Missing required fields");
+    return res.status(400).json({ message: "Missing required fields" });
+  }
+
   // SQL query with placeholders
   const sql = `
     INSERT INTO lost_items (
@@ -80,6 +85,9 @@ app.post("/lost-items", (req, res) => {
     secret_info_1,
     secret_info_2,
   ];
+
+console.log("Running SQL with values:", values);
+
 
   // Execute query
   db.query(sql, values, (err, result) => {
