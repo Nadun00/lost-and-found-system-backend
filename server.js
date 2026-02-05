@@ -359,6 +359,128 @@ app.post("/claims", (req, res) => {
   });
 });
 
+// GET /lost-items/:id/matches
+// Returns found items that likely match this lost item
+app.get("/lost-items/:id/matches", (req, res) => {
+  const lostItemId = req.params.id;
+  console.log(" Matching for lost_item_id =", lostItemId);
+
+  //  Get the lost item first
+  const lostSql = `
+    SELECT
+      id,
+      user_id,
+      item_type,
+      lost_location,
+      lost_time_from,
+      lost_time_to,
+      color,
+      brand_model,
+      public_description
+    FROM lost_items
+    WHERE id = ?
+  `;
+
+  db.query(lostSql, [lostItemId], (err, lostResults) => {
+    if (err) {
+      console.error(" Error fetching lost item for matches:", err);
+      return res.status(500).json({ message: "Database error" });
+    }
+
+    if (lostResults.length === 0) {
+      return res.status(404).json({ message: "Lost item not found" });
+    }
+
+    const lostItem = lostResults[0];
+    console.log(" Lost item for matching:", lostItem);
+
+    //  Get all available found items
+    const foundSql = `
+      SELECT
+        id,
+        admin_id,
+        item_type,
+        found_location,
+        found_time,
+        color,
+        brand_model,
+        public_description,
+        storage_location,
+        status
+      FROM found_items
+      WHERE status = 'available'
+    `;
+
+    db.query(foundSql, (err, foundResults) => {
+      if (err) {
+        console.error(" Error fetching found items for matches:", err);
+        return res.status(500).json({ message: "Database error" });
+      }
+
+      //  Compute match score for each found item
+      const lostType = (lostItem.item_type || "").toLowerCase();
+      const lostColor = (lostItem.color || "").toLowerCase();
+      const lostLocation = (lostItem.lost_location || "").toLowerCase();
+
+      const lostFrom = lostItem.lost_time_from
+        ? new Date(lostItem.lost_time_from)
+        : null;
+      const lostTo = lostItem.lost_time_to
+        ? new Date(lostItem.lost_time_to)
+        : null;
+
+      const matches = foundResults
+        .map((found) => {
+          let score = 0;
+
+          const foundType = (found.item_type || "").toLowerCase();
+          const foundColor = (found.color || "").toLowerCase();
+          const foundLocation = (found.found_location || "").toLowerCase();
+
+          //  1) Type match (very important)
+          if (lostType && foundType && lostType === foundType) {
+            score += 50;
+          }
+
+          //  2) Color match
+          if (lostColor && foundColor && lostColor === foundColor) {
+            score += 20;
+          }
+
+          //  3) Location similarity (simple substring check)
+          if (
+            lostLocation &&
+            foundLocation &&
+            (lostLocation.includes(foundLocation) ||
+              foundLocation.includes(lostLocation))
+          ) {
+            score += 20;
+          }
+
+          //  4) Time overlap (if lost_from/to are set)
+          if (lostFrom && lostTo && found.found_time) {
+            const foundTime = new Date(found.found_time);
+            if (foundTime >= lostFrom && foundTime <= lostTo) {
+              score += 10;
+            }
+          }
+
+          return {
+            found_item: found,
+            score,
+          };
+        })
+        // Keep only good matches (>= 60)
+        .filter((m) => m.score >= 60)
+        // Sort by score descending
+        .sort((a, b) => b.score - a.score);
+
+      console.log(" Matches found:", matches.length);
+
+      res.json(matches);
+    });
+  });
+});
 
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
