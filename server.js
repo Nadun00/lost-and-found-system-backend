@@ -126,7 +126,7 @@ app.get("/lost-items", (req, res) => {
 
   db.query(sql, (err, results) => {
     if (err) {
-      console.error("❌ Error fetching lost items:", err);
+      console.error(" Error fetching lost items:", err);
       return res.status(500).json({ message: "Database error" });
     }
 
